@@ -69,11 +69,12 @@ function App() {
   }, [pgs, sortDir, sortKey]);
 
   useEffect(() => {
-    if (!supabase) return;
+    const client = supabase;
+    if (!client) return;
     const load = async () => {
       setLoading(true);
       setError(null);
-      const { data, error: err } = await supabase
+      const { data, error: err } = await client
         .from("pgs")
         .select("*")
         .order("monthly_rent", { ascending: true });
@@ -124,7 +125,7 @@ function App() {
     }
     // eslint-disable-next-line no-alert
     if (!window.confirm("Delete this PG?")) return;
-    const { error: err } = await supabase.from("pgs").delete().eq("id", id);
+    const { error: err } = await supabase!.from("pgs").delete().eq("id", id);
     if (err) {
       setError(err.message);
       return;
@@ -185,7 +186,7 @@ function App() {
       }
 
       if (activeId) {
-        const { data, error: err } = await supabase
+        const { data, error: err } = await supabase!
           .from("pgs")
           .update(payload)
           .eq("id", activeId)
@@ -198,7 +199,7 @@ function App() {
           );
         }
       } else {
-        const { data, error: err } = await supabase
+        const { data, error: err } = await supabase!
           .from("pgs")
           .insert(payload)
           .select()
