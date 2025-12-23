@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient";
 
 type OfficeLocation = "CV_NAGAR_ORACLE" | "ORACLE_TECHHUB";
 type PgType = "BOYS" | "COLIVE" | "OTHER";
+type PgStatus = "CONSIDERABLE" | "REJECTED" | "MAYBE";
 
 export type PgRow = {
   id: string;
@@ -19,6 +20,7 @@ export type PgRow = {
   address: string;
   pg_type: PgType;
   terms: string;
+  status: PgStatus;
   created_at?: string;
 };
 
@@ -40,6 +42,12 @@ const pgTypeLabels: Record<PgType, string> = {
   OTHER: "Other",
 };
 
+const pgStatusLabels: Record<PgStatus, string> = {
+  CONSIDERABLE: "Considerable",
+  REJECTED: "Rejected",
+  MAYBE: "Maybe",
+};
+
 function App() {
   const [pgs, setPgs] = useState<PgRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,16 +56,24 @@ function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("monthly_rent");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [statusFilter, setStatusFilter] = useState<PgStatus | "ALL">("ALL");
 
   const [form, setForm] = useState<Partial<PgRow>>({
     office_location: "CV_NAGAR_ORACLE",
     pg_type: "BOYS",
     non_veg_meals_per_week: 0,
     expected_missed_meals_per_week: 0,
+    status: "MAYBE",
   });
 
-  const sortedPgs = useMemo(() => {
-    const data = [...pgs];
+  const filteredAndSortedPgs = useMemo(() => {
+    const filtered =
+      statusFilter === "ALL"
+        ? pgs
+        : pgs.filter(
+            (pg) => (pg.status ?? "MAYBE") === statusFilter
+          );
+    const data = [...filtered];
     data.sort((a, b) => {
       const av = (a[sortKey] ?? 0) as number;
       const bv = (b[sortKey] ?? 0) as number;
@@ -66,7 +82,7 @@ function App() {
       return av > bv ? -1 : 1;
     });
     return data;
-  }, [pgs, sortDir, sortKey]);
+  }, [pgs, sortDir, sortKey, statusFilter]);
 
   useEffect(() => {
     const client = supabase;
@@ -84,6 +100,7 @@ function App() {
         setPgs(
           data.map((row) => ({
             ...row,
+            status: ((row as any).status || "MAYBE") as PgStatus,
           })) as PgRow[]
         );
       }
@@ -109,6 +126,7 @@ function App() {
       pg_type: "BOYS",
       non_veg_meals_per_week: 0,
       expected_missed_meals_per_week: 0,
+       status: "MAYBE",
     });
   };
 
@@ -160,6 +178,7 @@ function App() {
       address: form.address || "",
       pg_type: (form.pg_type || "BOYS") as PgType,
       terms: form.terms || "",
+      status: (form.status || "MAYBE") as PgStatus,
     };
 
     if (!payload.name) {
@@ -251,7 +270,7 @@ function App() {
       "Terms",
     ];
 
-    const rows = sortedPgs.map((pg) => [
+    const rows = filteredAndSortedPgs.map((pg: PgRow) => [
       pg.name,
       pg.monthly_rent,
       pg.security_deposit,
@@ -518,6 +537,47 @@ function App() {
               />
             </div>
 
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-700">
+                Status
+              </label>
+              <div className="inline-flex rounded-full bg-slate-100 p-1 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => handleChange("status", "CONSIDERABLE")}
+                  className={`rounded-full px-2 py-1 ${
+                    form.status === "CONSIDERABLE"
+                      ? "bg-emerald-600 text-slate-50"
+                      : "text-slate-700"
+                  }`}
+                >
+                  Considerable
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChange("status", "MAYBE")}
+                  className={`rounded-full px-2 py-1 ${
+                    !form.status || form.status === "MAYBE"
+                      ? "bg-slate-900 text-slate-50"
+                      : "text-slate-700"
+                  }`}
+                >
+                  Maybe
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChange("status", "REJECTED")}
+                  className={`rounded-full px-2 py-1 ${
+                    form.status === "REJECTED"
+                      ? "bg-rose-600 text-slate-50"
+                      : "text-slate-700"
+                  }`}
+                >
+                  Rejected
+                </button>
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
                 type="submit"
@@ -547,15 +607,51 @@ function App() {
 
         <section className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 sm:p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
+      <div>
               <h2 className="text-base font-semibold sm:text-lg">
                 Your PG shortlist
               </h2>
               <p className="mt-0.5 text-xs text-slate-500">
-                Tap headers to sort by cost, food or distance.
+                Tap headers to sort by cost, food or distance. Use status to
+                hide rejected PGs.
               </p>
-            </div>
-            <div className="flex items-center gap-2">
+              <div className="mt-2 inline-flex rounded-full bg-slate-100 p-1 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("ALL")}
+                  className={`rounded-full px-2 py-1 ${
+                    statusFilter === "ALL"
+                      ? "bg-slate-900 text-slate-50"
+                      : "text-slate-700"
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("CONSIDERABLE")}
+                  className={`rounded-full px-2 py-1 ${
+                    statusFilter === "CONSIDERABLE"
+                      ? "bg-emerald-600 text-slate-50"
+                      : "text-slate-700"
+                  }`}
+                >
+                  Considerable
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("REJECTED")}
+                  className={`rounded-full px-2 py-1 ${
+                    statusFilter === "REJECTED"
+                      ? "bg-rose-600 text-slate-50"
+                      : "text-slate-700"
+                  }`}
+                >
+                  Rejected
+                </button>
+              </div>
+      </div>
+            <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
                 {loading ? "Loading..." : `${pgs.length} saved`}
               </span>
@@ -566,7 +662,7 @@ function App() {
                 className="rounded-full border border-slate-300 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Export CSV
-              </button>
+        </button>
             </div>
           </div>
 
@@ -615,11 +711,12 @@ function App() {
                       Dist (km) {sortIcon("distance_to_office_km")}
                     </th>
                     <th className="px-2 py-2">Type</th>
+                    <th className="px-2 py-2">Status</th>
                     <th className="px-2 py-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {sortedPgs.map((pg) => (
+                  {filteredAndSortedPgs.map((pg) => (
                     <tr
                       key={pg.id}
                       className={
@@ -656,6 +753,19 @@ function App() {
                       </td>
                       <td className="px-2 py-2 align-top text-[11px] text-slate-700">
                         {pgTypeLabels[pg.pg_type]}
+                      </td>
+                      <td className="px-2 py-2 align-top text-[11px]">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 ${
+                            (pg.status ?? "MAYBE") === "CONSIDERABLE"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : (pg.status ?? "MAYBE") === "REJECTED"
+                              ? "bg-rose-50 text-rose-700"
+                              : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {pgStatusLabels[pg.status ?? "MAYBE"]}
+                        </span>
                       </td>
                       <td className="px-2 py-2 align-top text-[11px]">
                         <div className="flex flex-col gap-1">

@@ -138,7 +138,9 @@ create table if not exists public.pgs (
   distance_to_office_km numeric(5,2),
   address text not null default '',
   pg_type text not null check (pg_type in ('BOYS', 'COLIVE', 'OTHER')),
-  terms text not null default ''
+  terms text not null default '',
+  status text not null default 'MAYBE' check (status in ('CONSIDERABLE', 'REJECTED', 'MAYBE')),
+  visited boolean not null default false
 );
 
 alter table public.pgs enable row level security;
@@ -166,6 +168,16 @@ on public.pgs
 for delete
 to anon
 using (true);
+```
+
+If you already created the table earlier without the `status` / `visited` columns, you can add them with:
+
+```sql
+alter table public.pgs
+add column if not exists status text not null default 'MAYBE' check (status in ('CONSIDERABLE', 'REJECTED', 'MAYBE'));
+
+alter table public.pgs
+add column if not exists visited boolean not null default false;
 ```
 
 3. **Set environment variables**
