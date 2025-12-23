@@ -232,6 +232,61 @@ function App() {
     return sortDir === "asc" ? "↑" : "↓";
   };
 
+  const handleExportCsv = () => {
+    if (!pgs.length) return;
+
+    const headers = [
+      "Name",
+      "Monthly Rent",
+      "Security Deposit",
+      "Amenities",
+      "Non-veg Meals / Week",
+      "Weekly Menu",
+      "Expected Missed Meals / Week",
+      "Office Location",
+      "Distance To Office (km)",
+      "Address",
+      "PG Type",
+      "Terms",
+    ];
+
+    const rows = sortedPgs.map((pg) => [
+      pg.name,
+      pg.monthly_rent,
+      pg.security_deposit,
+      pg.amenities,
+      pg.non_veg_meals_per_week,
+      pg.weekly_menu,
+      pg.expected_missed_meals_per_week,
+      officeLocationLabels[pg.office_location],
+      pg.distance_to_office_km ?? "",
+      pg.address,
+      pgTypeLabels[pg.pg_type],
+      pg.terms,
+    ]);
+
+    const escapeCell = (cell: unknown) => {
+      if (cell === null || cell === undefined) return "";
+      const str = String(cell);
+      if (/[",\n]/.test(str)) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvContent =
+      [headers, ...rows].map((row) => row.map(escapeCell).join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    link.download = `pg-hunter-${timestamp}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <div className="mx-auto max-w-5xl px-4 pb-24 pt-4 sm:pt-6">
@@ -499,9 +554,19 @@ function App() {
                 Tap headers to sort by cost, food or distance.
               </p>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
-              {loading ? "Loading..." : `${pgs.length} saved`}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                {loading ? "Loading..." : `${pgs.length} saved`}
+              </span>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={!pgs.length}
+                className="rounded-full border border-slate-300 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Export CSV
+              </button>
+            </div>
           </div>
 
           {pgs.length === 0 ? (
